@@ -157,6 +157,114 @@ const actors = [{
   }]
 }];
 
+//Method of Rental Price of a car
+function calcRental(ndays, pday, nkm, pkm) {
+  return (ndays * pday) + (nkm * pkm);   // The function returns the product of p1 and p2
+}
+
+//Discount on LongTerm Rental
+function discOffers (price, ndays){
+  if(ndays>1&&ndays<=4)
+   return price * 0.9; //10% Discounts
+   else if(ndays>4&&ndays<=10)
+   return price * 0.7;
+   else if(ndays>10)
+   return price * 0.5;
+   else
+   return price;
+}
+
+//Dividing the commision (30% of Rental Price)
+function calcCommission(price,ndays)
+{
+  var commission = new Array(4);
+  var takenCommission = price*0.3;
+  var insurance=takenCommission*0.5;
+  commission[0]=insurance;
+  var treasury= ndays * 1;
+  commission[1]=treasury;
+  var profit=takenCommission-insurance-treasury;
+  commission[2]=profit;
+  return commission;
+}
+
+//Adjusting price in case of service registration
+function deductibleReductionPrice(bool,price,ndays)
+{
+  if(bool)
+    return (price + (4*ndays));
+  else
+    return price;
+}
+
+//Running calculations and modifying arrays
+function calcProcedure() {
+  var pday = 0;
+  var pkm = 0;
+  var ndays = 1;
+  var finalPrice =0;
+rentals.forEach(rental => cars.forEach(car =>
+  {
+        if (car.id.localeCompare(rental.carId))
+        {
+		//Get Parameters for Price
+          pday = car.pricePerDay;
+          pkm =  car.pricePerKm;
+		//Rental Duration
+          const from = new Date(rental.pickupDate)
+          const to = new Date(rental.returnDate)
+          const one_day=1000*60*60*24;
+          const ndays_ms = (to.getTime()-from.getTime())+one_day;
+          ndays= Math.round(ndays_ms/one_day);
+		 //Calculate Default Price
+          var price= calcRental(ndays,pday,rental.distance,pkm);
+         //Apply Discount on Rental Duration
+		  var afterDisc = discOffers(price,ndays)
+         // Service Registration versus Price
+		  if(rental.options.deductibleReduction)
+          var afterService = deductibleReductionPrice(true,afterDisc,ndays);
+          else
+          var afterService = deductibleReductionPrice(false,afterDisc,ndays);
+         // Setting Last Price to be paid by driver
+		  finalPrice = afterService;
+          rental.price= finalPrice;
+		 // Take credit of commision from debit payment
+		 rental.commission=calcCommission(finalPrice,ndays);
+         // Testing Methods
+		  console.log("ndays is: "+ndays);
+          console.log("pday is: "+pday);
+          console.log("pkm is: "+pkm);
+          console.log("dist is: "+rental.distance);
+          console.log(rental.carId+" rental price is: "+ price);
+          console.log("After Discount: "+afterDisc);
+          console.log("After Service: "+afterService);
+        }
+  }));
+}
+
+//Modifying Actors Array depending on Rental Details
+function finalizePayment(){
+  actors.forEach(actor => rentals.forEach(rental =>
+    {
+      if (rental.id.localeCompare(actor.rentalId))
+      {
+        //TotalPayment
+        actor.payment[0].amount=rental.price;
+        //Partner
+        actor.payment[1].amount=rental.price*0.7;
+        //insurance
+        actor.payment[2].amount=rental.commission[0];
+        //treasury
+        actor.payment[3].amount=rental.commission[1];
+        //Virtuo
+        actor.payment[4].amount=rental.commission[2];
+      }
+}));
+}
+calcProcedure.call();
+finalizePayment.call();
+
+
 console.log(cars);
 console.log(rentals);
 console.log(actors);
